@@ -1,6 +1,9 @@
 using System.Text;
+using System.Text.Json;
 using InteractHub.Api.Data;
+using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Entities;
+using InteractHub.Api.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -49,10 +52,38 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(secretKey)
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnChallenge = async context =>
+        {
+            // 1. Tắt phản hồi 401 rỗng mặc định của Microsoft
+            context.HandleResponse();
+
+            // 2. Thiết lập Response trả về kiểu JSON và mã lỗi 401
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+
+            // 3. Đóng gói lỗi bằng "Chiếc hộp" ErrorResponse chuẩn của dự án
+            var errorResponse = new ErrorResponse(
+                ErrorCode.UNAUTHORIZED,
+                "Please login or provide a valid token."
+            );
+
+            // 4. Biến Object thành chuỗi JSON (camelCase mặc định) và gửi về Frontend
+            var jsonResult = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions 
+            { 
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+            });
+            
+            await context.Response.WriteAsync(jsonResult);
+        }
+    };
 });
 
 // Thêm dịch vụ Controllers
 builder.Services.AddControllers();
+builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -65,7 +96,6 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    // Bỏ dòng app.MapOpenApi(); đi và thay bằng 2 dòng này:
     app.UseSwagger();
     app.UseSwaggerUI();
 }
