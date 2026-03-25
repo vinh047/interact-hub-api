@@ -33,5 +33,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(u => u.ReceivedFriendRequests)
             .HasForeignKey(f => f.AddresseeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Post>().HasQueryFilter(p => !p.IsDeleted);
     }
 }
