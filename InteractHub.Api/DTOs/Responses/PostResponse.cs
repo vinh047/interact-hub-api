@@ -13,4 +13,6 @@ public class PostResponse
     public required string AuthorName { get; set; }
 
     public PostVisibility Visibility { get; set; }
+
+    public int CommentCount { get; set; }
 }

@@ -14,4 +14,6 @@ public class Post : BaseEntity
 
     // Navigation Properties (Tạo khóa ngoại trỏ về User)
     public ApplicationUser? User { get; set; }
+
+    public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 }

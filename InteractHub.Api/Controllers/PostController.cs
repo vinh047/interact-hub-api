@@ -51,7 +51,9 @@ public class PostController(ApplicationDbContext context) : ControllerBase
                 CreatedAt = p.CreatedAt,
                 AuthorId = p.UserId,
                 AuthorName = p.User!.FullName, // Tự động JOIN ở đây
-                Visibility = p.Visibility
+                Visibility = p.Visibility,
+
+                CommentCount = p.Comments.Count()
             });
 
         // 2. Chạy SQL và Đóng gói phân trang
@@ -142,7 +144,9 @@ public class PostController(ApplicationDbContext context) : ControllerBase
             CreatedAt = p.CreatedAt,
             AuthorId = p.UserId,
             AuthorName = p.User!.FullName,
-            Visibility = p.Visibility
+            Visibility = p.Visibility,
+
+            CommentCount = p.Comments.Count()
         });
 
         var pagedPosts = await PagedList<PostResponse>.CreateAsync(selectQuery, queryParams.PageNumber, queryParams.PageSize);
@@ -170,7 +174,9 @@ public class PostController(ApplicationDbContext context) : ControllerBase
                 CreatedAt = p.CreatedAt,
                 AuthorId = p.UserId,
                 AuthorName = p.User!.FullName,
-                Visibility = p.Visibility
+                Visibility = p.Visibility,
+
+                CommentCount = p.Comments.Count()
             })
             .FirstOrDefaultAsync();
 
