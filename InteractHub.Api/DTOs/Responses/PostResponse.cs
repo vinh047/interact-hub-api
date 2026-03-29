@@ -15,4 +15,7 @@ public class PostResponse
     public PostVisibility Visibility { get; set; }
 
     public int CommentCount { get; set; }
+
+    public int LikeCount { get; set; }
+    public bool IsLikedByCurrentUser { get; set; }
 }

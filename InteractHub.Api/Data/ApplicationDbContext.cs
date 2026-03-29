@@ -11,6 +11,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Like> Likes => Set<Like>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -60,5 +61,29 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(c => c.Replies)
             .HasForeignKey(c => c.ParentCommentId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ==========================================
+        // CẤU HÌNH BẢNG LIKE
+        // ==========================================
+        
+        builder.Entity<Like>().HasQueryFilter(l => !l.Post!.IsDeleted);
+        
+        // 1. Set Khóa chính kép (Composite Key) để chống 1 User like 1 bài 2 lần
+        builder.Entity<Like>()
+            .HasKey(l => new { l.PostId, l.UserId });
+
+        // 2. User - Like: Xóa User thì KHÔNG tự động xóa Like (Tránh đụng độ vòng tròn)
+        builder.Entity<Like>()
+            .HasOne(l => l.User)
+            .WithMany(u => u.Likes)
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 3. Post - Like: Xóa Bài viết thì XÓA LUÔN các lượt Like của bài đó
+        builder.Entity<Like>()
+            .HasOne(l => l.Post)
+            .WithMany(p => p.Likes)
+            .HasForeignKey(l => l.PostId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

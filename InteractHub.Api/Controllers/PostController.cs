@@ -41,6 +41,10 @@ public class PostController(ApplicationDbContext context) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetNewsFeed([FromQuery] PostQueryParameters queryParams)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId == Guid.Empty)
+            return Unauthorized(new ErrorResponse(ErrorCode.UNAUTHORIZED, "User identity not found."));
+
         var query = context.Posts
             .Where(p => p.Visibility == PostVisibility.Public)
             .OrderByDescending(p => p.CreatedAt)
@@ -53,7 +57,11 @@ public class PostController(ApplicationDbContext context) : ControllerBase
                 AuthorName = p.User!.FullName, // Tự động JOIN ở đây
                 Visibility = p.Visibility,
 
-                CommentCount = p.Comments.Count()
+                CommentCount = p.Comments.Count(),
+
+                // Đếm tổng số lượt Like của bài viết
+                LikeCount = p.Likes.Count(),
+                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId)
             });
 
         // 2. Chạy SQL và Đóng gói phân trang
@@ -146,7 +154,11 @@ public class PostController(ApplicationDbContext context) : ControllerBase
             AuthorName = p.User!.FullName,
             Visibility = p.Visibility,
 
-            CommentCount = p.Comments.Count()
+            CommentCount = p.Comments.Count(),
+
+            // Đếm tổng số lượt Like của bài viết
+            LikeCount = p.Likes.Count(),
+            IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId)
         });
 
         var pagedPosts = await PagedList<PostResponse>.CreateAsync(selectQuery, queryParams.PageNumber, queryParams.PageSize);
@@ -176,7 +188,11 @@ public class PostController(ApplicationDbContext context) : ControllerBase
                 AuthorName = p.User!.FullName,
                 Visibility = p.Visibility,
 
-                CommentCount = p.Comments.Count()
+                CommentCount = p.Comments.Count(),
+
+                // Đếm tổng số lượt Like của bài viết
+                LikeCount = p.Likes.Count(),
+                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId)
             })
             .FirstOrDefaultAsync();
 

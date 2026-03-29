@@ -12,4 +12,6 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<Post> Posts { get; set; } = [];
     public ICollection<Friendship> SentFriendRequests { get; set; } = [];
     public ICollection<Friendship> ReceivedFriendRequests { get; set; } = [];
+
+    public ICollection<Like> Likes { get; set; } = new List<Like>();
 }
