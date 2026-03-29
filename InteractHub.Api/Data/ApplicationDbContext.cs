@@ -12,6 +12,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Friendship> Friendships => Set<Friendship>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Like> Likes => Set<Like>();
+    public DbSet<Story> Stories => Set<Story>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -65,9 +66,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // ==========================================
         // CẤU HÌNH BẢNG LIKE
         // ==========================================
-        
+
         builder.Entity<Like>().HasQueryFilter(l => !l.Post!.IsDeleted);
-        
+
         // 1. Set Khóa chính kép (Composite Key) để chống 1 User like 1 bài 2 lần
         builder.Entity<Like>()
             .HasKey(l => new { l.PostId, l.UserId });
@@ -85,5 +86,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(p => p.Likes)
             .HasForeignKey(l => l.PostId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ==========================================
+        // CẤU HÌNH BẢNG STORY (TIN 24H)
+        // ==========================================
+
+        // 1. Cấu hình khóa ngoại (Xóa User thì xóa sạch Story của họ)
+        builder.Entity<Story>()
+            .HasOne(s => s.User)
+            .WithMany(u => u.Stories)
+            .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // 2. MAGIC TRICK: Global Query Filter tự động ẩn Story quá 24h
+        // Khi Controller gọi lệnh lấy dữ liệu, EF Core sẽ tự động nối thêm điều kiện "Thời gian hết hạn > Thời gian hiện tại"
+        builder.Entity<Story>().HasQueryFilter(s => s.ExpiresAt > DateTime.UtcNow);
     }
 }

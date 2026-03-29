@@ -16,4 +16,5 @@ public enum ErrorCode
     CONFLICT,
     FRIENDSHIP_NOT_FOUND,
     NOT_FOUND,
+    STORY_NOT_FOUND,
 }
