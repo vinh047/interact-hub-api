@@ -3,17 +3,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace InteractHub.Api.Entities;
 
-public class Comment
+public class Comment : BaseEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     [MaxLength(1000)]
     public required string Content { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; set; }
 
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
