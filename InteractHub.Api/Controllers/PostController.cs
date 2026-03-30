@@ -1,10 +1,10 @@
-using System.Security.Claims;
 using InteractHub.Api.Data;
 using InteractHub.Api.DTOs.Requests.Post;
 using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Entities;
 using InteractHub.Api.Enums;
 using InteractHub.Api.Helpers;
+using InteractHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,22 +14,41 @@ namespace InteractHub.Api.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
-public class PostController(ApplicationDbContext context) : ControllerBase
+public class PostController(ApplicationDbContext context, IFileService fileService) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request)
+    public async Task<IActionResult> CreatePost([FromForm] CreatePostRequest request)
     {
         var userId = User.GetUserId();
         if (userId == Guid.Empty)
             return Unauthorized(new ErrorResponse(ErrorCode.UNAUTHORIZED, "User identity not found."));
 
-        // Chuyển DTO thành Entity
+        // Tạo Post rỗng (chỉ có chữ) trước
         var newPost = new Post
         {
             Content = request.Content,
-            UserId = userId,
-            Visibility = request.Visibility
+            UserId = userId
         };
+
+        // Xử lý danh sách File (nếu có)
+        if (request.MediaFiles != null && request.MediaFiles.Any())
+        {
+            foreach (var file in request.MediaFiles)
+            {
+                // Gọi IFileService để lưu file và lấy Link URL
+                var mediaUrl = await fileService.UploadFileAsync(file, "posts");
+
+                // Đơn giản hóa việc check loại file (nếu ContentType bắt đầu bằng video/ thì là Video, ngược lại là Image)
+                var mediaType = file.ContentType.StartsWith("video/") ? MediaType.Video : MediaType.Image;
+
+                // Thêm vào danh sách Media của bài viết
+                newPost.MediaFiles.Add(new PostMedia
+                {
+                    MediaUrl = mediaUrl,
+                    MediaType = mediaType
+                });
+            }
+        }
 
         context.Posts.Add(newPost);
         await context.SaveChangesAsync();
@@ -61,7 +80,15 @@ public class PostController(ApplicationDbContext context) : ControllerBase
 
                 // Đếm tổng số lượt Like của bài viết
                 LikeCount = p.Likes.Count(),
-                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId)
+                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId),
+
+                MediaFiles = p.MediaFiles.Select(m => new PostMediaResponse
+                {
+                    Id = m.Id,
+                    MediaUrl = m.MediaUrl,
+                    // Ép kiểu Enum sang chữ ("Image" hoặc "Video") để Frontend dễ đọc
+                    MediaType = m.MediaType.ToString()
+                }).ToList()
             });
 
         // 2. Chạy SQL và Đóng gói phân trang
@@ -158,7 +185,15 @@ public class PostController(ApplicationDbContext context) : ControllerBase
 
             // Đếm tổng số lượt Like của bài viết
             LikeCount = p.Likes.Count(),
-            IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId)
+            IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId),
+
+            MediaFiles = p.MediaFiles.Select(m => new PostMediaResponse
+            {
+                Id = m.Id,
+                MediaUrl = m.MediaUrl,
+                // Ép kiểu Enum sang chữ ("Image" hoặc "Video") để Frontend dễ đọc
+                MediaType = m.MediaType.ToString()
+            }).ToList()
         });
 
         var pagedPosts = await PagedList<PostResponse>.CreateAsync(selectQuery, queryParams.PageNumber, queryParams.PageSize);
@@ -192,7 +227,15 @@ public class PostController(ApplicationDbContext context) : ControllerBase
 
                 // Đếm tổng số lượt Like của bài viết
                 LikeCount = p.Likes.Count(),
-                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId)
+                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId),
+
+                MediaFiles = p.MediaFiles.Select(m => new PostMediaResponse
+                {
+                    Id = m.Id,
+                    MediaUrl = m.MediaUrl,
+                    // Ép kiểu Enum sang chữ ("Image" hoặc "Video") để Frontend dễ đọc
+                    MediaType = m.MediaType.ToString()
+                }).ToList()
             })
             .FirstOrDefaultAsync();
 

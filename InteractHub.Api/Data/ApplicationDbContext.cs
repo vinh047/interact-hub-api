@@ -13,6 +13,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Like> Likes => Set<Like>();
     public DbSet<Story> Stories => Set<Story>();
+    public DbSet<PostMedia> PostMedia => Set<PostMedia>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -101,5 +102,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // 2. MAGIC TRICK: Global Query Filter tự động ẩn Story quá 24h
         // Khi Controller gọi lệnh lấy dữ liệu, EF Core sẽ tự động nối thêm điều kiện "Thời gian hết hạn > Thời gian hiện tại"
         builder.Entity<Story>().HasQueryFilter(s => s.ExpiresAt > DateTime.UtcNow);
+
+        // ==========================================
+        // CẤU HÌNH BẢNG POST MEDIA
+        // ==========================================
+        builder.Entity<PostMedia>().HasQueryFilter(pm => !pm.Post!.IsDeleted);
+        
+        builder.Entity<PostMedia>()
+            .HasOne(pm => pm.Post)
+            .WithMany(p => p.MediaFiles)
+            .HasForeignKey(pm => pm.PostId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

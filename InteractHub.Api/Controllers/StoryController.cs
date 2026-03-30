@@ -5,6 +5,7 @@ using InteractHub.Api.DTOs.Responses.Story;
 using InteractHub.Api.Entities;
 using InteractHub.Api.Enums;
 using InteractHub.Api.Helpers;
+using InteractHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,20 +15,29 @@ namespace InteractHub.Api.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize] // Bắt buộc đăng nhập
-public class StoryController(ApplicationDbContext context) : ControllerBase
+public class StoryController(ApplicationDbContext context, IFileService fileService) : ControllerBase
 {
     // API: Đăng Story
     [HttpPost]
-    public async Task<IActionResult> CreateStory([FromBody] CreateStoryRequest request)
+    public async Task<IActionResult> CreateStory([FromForm] CreateStoryRequest request)
     {
         var userId = User.GetUserId();
         if (userId == Guid.Empty)
             return Unauthorized(new ErrorResponse(ErrorCode.UNAUTHORIZED, "User identity not found."));
 
-        // Tạo Entity Story mới
+        // Validate chống upload file rỗng
+        if (request.MediaFile == null || request.MediaFile.Length == 0)
+        {
+            return BadRequest(new ErrorResponse(ErrorCode.BAD_REQUEST, "Please select a file to upload."));
+        }
+
+        // MAGIC HAPPENS HERE: Lưu file vào thư mục "wwwroot/stories" và lấy link URL
+        var mediaUrl = await fileService.UploadFileAsync(request.MediaFile, "stories");
+
+        // Tạo Entity Story mới với cái link vừa nhận được
         var newStory = new Story
         {
-            MediaUrl = request.MediaUrl,
+            MediaUrl = mediaUrl, // Gán link xịn vào
             UserId = userId,
             ExpiresAt = DateTime.UtcNow.AddDays(1)
         };
@@ -87,7 +97,7 @@ public class StoryController(ApplicationDbContext context) : ControllerBase
 
         // Tìm Story (cũng ăn theo Global Query Filter nên nếu Story đã quá 24h, nó sẽ trả về null)
         var story = await context.Stories
-            .IgnoreQueryFilters() 
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (story == null)

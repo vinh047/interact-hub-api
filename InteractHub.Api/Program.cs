@@ -4,6 +4,7 @@ using InteractHub.Api.Data;
 using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Entities;
 using InteractHub.Api.Enums;
+using InteractHub.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -91,6 +92,12 @@ builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Đăng ký HttpContextAccessor để lấy được Base URL (https://localhost:...)
+builder.Services.AddHttpContextAccessor();
+
+// Đăng ký dịch vụ FileService (Plug & Play)
+builder.Services.AddScoped<IFileService, LocalFileService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -101,6 +108,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// THÊM DÒNG NÀY ĐỂ MỞ CỬA CHO PHÉP TRUY CẬP ẢNH TỪ THƯ MỤC wwwroot
+app.UseStaticFiles();
 
 // Kích hoạt Authentication/Authorization
 app.UseAuthentication();
