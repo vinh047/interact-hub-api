@@ -1,4 +1,5 @@
 using InteractHub.Api.Data;
+using InteractHub.Api.DTOs.Requests.Friendship;
 using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.DTOs.Responses.Friendship;
 using InteractHub.Api.Entities;
@@ -139,56 +140,61 @@ public class FriendshipController(ApplicationDbContext context) : ControllerBase
 
     // API: Lấy danh sách bạn bè
     [HttpGet("friends")]
-    public async Task<IActionResult> GetFriends()
+    public async Task<IActionResult> GetFriends([FromQuery] FriendshipParams friendshipParams)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId == Guid.Empty)
             return Unauthorized(new ErrorResponse(ErrorCode.UNAUTHORIZED, "User identity not found."));
 
         // Lấy danh sách bạn bè (Status = Accepted) và User hiện tại có thể là Người gửi HOẶC Người nhận
-        var friends = await context.Friendships
-            .Where(f => f.Status == FriendshipStatus.Accepted && 
+        var query = context.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted &&
                        (f.RequesterId == currentUserId || f.AddresseeId == currentUserId))
             .Select(f => new FriendUserResponse
             {
-                // Nếu mình là Requester -> Lấy thông tin Addressee. Ngược lại -> Lấy thông tin Requester.
                 UserId = f.RequesterId == currentUserId ? f.Addressee!.Id : f.Requester!.Id,
                 FullName = f.RequesterId == currentUserId ? f.Addressee!.FullName : f.Requester!.FullName,
                 AvatarUrl = f.RequesterId == currentUserId ? f.Addressee!.AvatarUrl : f.Requester!.AvatarUrl,
                 Bio = f.RequesterId == currentUserId ? f.Addressee!.Bio : f.Requester!.Bio,
-                
-                Status = f.Status,
-                // Lấy thời gian trở thành bạn bè (UpdatedAt). Nếu không có thì lấy CreatedAt.
-                CreatedAt = f.UpdatedAt ?? f.CreatedAt 
-            })
-            .ToListAsync();
 
-        return Ok(friends);
+                Status = f.Status,
+                CreatedAt = f.UpdatedAt ?? f.CreatedAt
+            })
+            .OrderByDescending(f => f.CreatedAt);
+
+        var pagedFriends = await PagedList<FriendUserResponse>.CreateAsync(query, friendshipParams.PageNumber, friendshipParams.PageSize);
+
+        Response.AddPaginationHeader(pagedFriends.CurrentPage, pagedFriends.PageSize, pagedFriends.TotalCount, pagedFriends.TotalPages);
+
+        return Ok(pagedFriends);
     }
 
     // API: Lấy danh sách lời mời kết bạn ĐANG CHỜ XÁC NHẬN (Mình là người nhận)
     [HttpGet("requests/received")]
-    public async Task<IActionResult> GetPendingRequests()
+    public async Task<IActionResult> GetPendingRequests([FromQuery] FriendshipParams friendshipParams)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId == Guid.Empty)
             return Unauthorized(new ErrorResponse(ErrorCode.UNAUTHORIZED, "User identity not found."));
 
-        var pendingRequests = await context.Friendships
+        var query = context.Friendships
+            .Include(f => f.Requester)
             .Where(f => f.Status == FriendshipStatus.Pending && f.AddresseeId == currentUserId)
+            .OrderByDescending(f => f.CreatedAt)
             .Select(f => new FriendUserResponse
             {
-                // Vì mình chắc chắn là Addressee, nên "người kia" chắc chắn là Requester
                 UserId = f.Requester!.Id,
                 FullName = f.Requester!.FullName,
                 AvatarUrl = f.Requester!.AvatarUrl,
                 Bio = f.Requester!.Bio,
                 Status = f.Status,
-                CreatedAt = f.CreatedAt // Thời gian họ gửi lời mời
-            })
-            .OrderByDescending(f => f.CreatedAt) // Mới nhất xếp trước
-            .ToListAsync();
+                CreatedAt = f.CreatedAt
+            });
 
-        return Ok(pendingRequests);
+        var pagedRequests = await PagedList<FriendUserResponse>.CreateAsync(query, friendshipParams.PageNumber, friendshipParams.PageSize);
+
+        Response.AddPaginationHeader(pagedRequests.CurrentPage, pagedRequests.PageSize, pagedRequests.TotalCount, pagedRequests.TotalPages);
+
+        return Ok(pagedRequests);
     }
 }

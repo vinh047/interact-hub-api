@@ -53,7 +53,25 @@ public class CommentController(ApplicationDbContext context) : ControllerBase
         context.Comments.Add(newComment);
         await context.SaveChangesAsync();
 
-        return Ok(new { message = "Comment created successfully.", commentId = newComment.Id });
+        var createdComment = await context.Comments
+                    .Include(c => c.User)
+                    .Where(c => c.Id == newComment.Id)
+                    .Select(c => new CommentResponse
+                    {
+                        Id = c.Id,
+                        Content = c.Content,
+                        CreatedAt = c.CreatedAt,
+                        UpdatedAt = c.UpdatedAt,
+                        AuthorId = c.UserId,
+                        AuthorName = c.User!.FullName,
+                        AuthorAvatarUrl = c.User!.AvatarUrl,
+                        PostId = c.PostId,
+                        ParentCommentId = c.ParentCommentId,
+                        ReplyCount = 0 // Vừa tạo xong chắc chắn chưa có reply
+                    })
+                    .FirstOrDefaultAsync();
+
+        return Ok(createdComment);
     }
 
     [HttpPut("{id}")]
@@ -81,7 +99,25 @@ public class CommentController(ApplicationDbContext context) : ControllerBase
 
         await context.SaveChangesAsync();
 
-        return Ok(new { message = "Comment updated successfully." });
+        var updatedComment = await context.Comments
+            .Include(c => c.User)
+            .Where(c => c.Id == comment.Id)
+            .Select(c => new CommentResponse
+            {
+                Id = c.Id,
+                Content = c.Content,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt,
+                AuthorId = c.UserId,
+                AuthorName = c.User!.FullName,
+                AuthorAvatarUrl = c.User!.AvatarUrl,
+                PostId = c.PostId,
+                ParentCommentId = c.ParentCommentId,
+                ReplyCount = context.Comments.Count(r => r.ParentCommentId == c.Id)
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(updatedComment);
     }
 
     [HttpDelete("{id}")]
@@ -118,85 +154,95 @@ public class CommentController(ApplicationDbContext context) : ControllerBase
 
     [HttpGet("post/{postId}")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetPostComments(Guid postId)
+    public async Task<IActionResult> GetRootCommentsByPostId(Guid postId, [FromQuery] CommentParams commentParams)
     {
-        var allComments = await context.Comments
-            .IgnoreQueryFilters()
+        var postExists = await context.Posts.AnyAsync(p => p.Id == postId);
+        if (!postExists)
+        {
+            return NotFound(new ErrorResponse(ErrorCode.POST_NOT_FOUND, "Post not found."));
+        }
+
+        var query = context.Comments
             .Include(c => c.User)
-            .Where(c => c.PostId == postId)
-            .OrderBy(c => c.CreatedAt)
-            .ToListAsync();
-
-        if (!allComments.Any())
-        {
-            return Ok(new List<CommentResponse>()); // Trả về mảng rỗng nếu chưa có bình luận nào
-        }
-
-        var commentDictionary = new Dictionary<Guid, CommentResponse>();
-        var rootComments = new List<CommentResponse>();
-
-        foreach (var comment in allComments)
-        {
-            var response = new CommentResponse
+            .Where(c => c.PostId == postId && c.ParentCommentId == null)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new CommentResponse
             {
-                Id = comment.Id,
-                // NẾU BỊ XÓA: Che giấu nội dung thật
-                Content = comment.IsDeleted ? "[Bình luận này đã bị xóa]" : comment.Content,
-                CreatedAt = comment.CreatedAt,
-                UpdatedAt = comment.UpdatedAt,
-                PostId = comment.PostId,
-                ParentCommentId = comment.ParentCommentId,
+                Id = c.Id,
+                Content = c.Content,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt,
+                AuthorId = c.UserId,
+                AuthorName = c.User!.FullName,
+                AuthorAvatarUrl = c.User!.AvatarUrl,
+                PostId = c.PostId,
+                ParentCommentId = c.ParentCommentId,
 
-                // NẾU BỊ XÓA: Che giấu danh tính người viết để bảo vệ quyền riêng tư
-                AuthorId = comment.IsDeleted ? Guid.Empty : comment.UserId,
-                AuthorName = comment.IsDeleted ? "Người dùng ẩn danh" : (comment.User?.FullName ?? "Unknown"),
-                Replies = new List<CommentResponse>()
-            };
+                ReplyCount = context.Comments.Count(r => r.ParentCommentId == c.Id),
+            });
 
-            commentDictionary.Add(response.Id, response);
-        }
+        var pagedComments = await PagedList<CommentResponse>.CreateAsync(
+            query,
+            commentParams.PageNumber,
+            commentParams.PageSize
+        );
 
-        // 2.2 - LẮP RÁP CÂY (Thuật toán ghép con vào cha)
-        foreach (var comment in allComments)
-        {
-            var dto = commentDictionary[comment.Id];
+        // 3. Gắn thông tin Phân trang vào HTTP Header (X-Pagination)
+        Response.AddPaginationHeader(
+            pagedComments.CurrentPage,
+            pagedComments.PageSize,
+            pagedComments.TotalCount,
+            pagedComments.TotalPages
+        );
 
-            // Nếu nó có Cha, và Cha của nó có tồn tại trong bài viết này
-            if (comment.ParentCommentId.HasValue && commentDictionary.ContainsKey(comment.ParentCommentId.Value))
-            {
-                // Bỏ đứa con vào túi (Replies) của người cha
-                commentDictionary[comment.ParentCommentId.Value].Replies.Add(dto);
-            }
-            else
-            {
-                // Nếu không có Cha (ParentCommentId == null) -> Nó là Rễ cây (Root)
-                rootComments.Add(dto);
-            }
-        }
-
-        // BƯỚC 3: DỌN DẸP RÁC BẰNG ĐỆ QUY
-        // Sẽ có những bình luận đã bị xóa, và TÌNH CỜ nó cũng chẳng có đứa con nào bám vào.
-        // Trả mấy cái bình luận đó về Frontend chỉ tổ chật chỗ, nên ta dùng hàm đệ quy để tỉa chúng đi.
-        PruneDeletedComments(rootComments);
-
-        return Ok(rootComments);
+        // 4. Trả về đúng cái danh sách dữ liệu siêu sạch (vì PagedList kế thừa từ List<T>)
+        return Ok(pagedComments);
     }
 
-    private void PruneDeletedComments(List<CommentResponse> comments)
+    [HttpGet("{commentId}/replies")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetRepliesByCommentId(Guid commentId, [FromQuery] CommentParams commentParams)
     {
-        for (int i = comments.Count - 1; i >= 0; i--)
+        // Kiểm tra xem bình luận cha có tồn tại không
+        var commentExists = await context.Comments.AnyAsync(c => c.Id == commentId);
+        if (!commentExists)
         {
-            var comment = comments[i];
-
-            if (comment.Replies.Any())
-            {
-                PruneDeletedComments(comment.Replies);
-            }
-
-            if (comment.Content == "[Bình luận này đã bị xóa]" && !comment.Replies.Any())
-            {
-                comments.RemoveAt(i);
-            }
+            return NotFound(new ErrorResponse(ErrorCode.COMMENT_NOT_FOUND, "Parent comment not found."));
         }
+
+        // Query lấy các reply (sâu 1 cấp)
+        var query = context.Comments
+            .Include(c => c.User)
+            .Where(c => c.ParentCommentId == commentId)
+            .OrderBy(c => c.CreatedAt) // Reply thường sắp xếp từ cũ tới mới để dễ đọc luồng hội thoại
+            .Select(c => new CommentResponse
+            {
+                Id = c.Id,
+                Content = c.Content,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt,
+                AuthorId = c.UserId,
+                AuthorName = c.User!.FullName,
+                AuthorAvatarUrl = c.User!.AvatarUrl,
+                PostId = c.PostId,
+                ParentCommentId = c.ParentCommentId,
+                ReplyCount = 0 // Thường các reply cấp 2 sẽ không có đếm reply con nữa
+            });
+
+        // Dùng PagedList giống hệt như lấy comment gốc
+        var pagedReplies = await PagedList<CommentResponse>.CreateAsync(
+            query,
+            commentParams.PageNumber,
+            commentParams.PageSize
+        );
+
+        Response.AddPaginationHeader(
+            pagedReplies.CurrentPage,
+            pagedReplies.PageSize,
+            pagedReplies.TotalCount,
+            pagedReplies.TotalPages
+        );
+
+        return Ok(pagedReplies);
     }
 }

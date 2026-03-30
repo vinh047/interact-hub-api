@@ -10,14 +10,13 @@ public class CommentResponse
     // Thông tin người viết bình luận
     public Guid AuthorId { get; set; }
     public required string AuthorName { get; set; } 
-    // Nếu bảng User của bạn có Avatar thì sau này thêm vào đây:
-    // public string? AuthorAvatar { get; set; }
+    public string? AuthorAvatarUrl { get; set; } // Đã mở khóa Avatar
 
     public Guid PostId { get; set; }
 
     // ID của bình luận cha (nếu có)
     public Guid? ParentCommentId { get; set; }
 
-    // Chứa danh sách các câu trả lời cho bình luận này
-    public List<CommentResponse> Replies { get; set; } = new List<CommentResponse>();
+    // Đếm số lượng reply (Giúp FE hiển thị chữ "Xem thêm 5 câu trả lời" mà chưa cần load list Replies)
+    public int ReplyCount { get; set; }
 }

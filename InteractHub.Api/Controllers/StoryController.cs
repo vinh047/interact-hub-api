@@ -45,12 +45,27 @@ public class StoryController(ApplicationDbContext context, IFileService fileServ
         context.Stories.Add(newStory);
         await context.SaveChangesAsync();
 
-        return Ok(new { message = "Story posted successfully.", storyId = newStory.Id });
+        var createdStory = await context.Stories
+            .Include(s => s.User)
+            .Where(s => s.Id == newStory.Id)
+            .Select(s => new StoryResponse
+            {
+                Id = s.Id,
+                MediaUrl = s.MediaUrl,
+                CreatedAt = s.CreatedAt,
+                ExpiresAt = s.ExpiresAt,
+                AuthorId = s.UserId,
+                AuthorName = s.User!.FullName,
+                AuthorAvatarUrl = s.User!.AvatarUrl
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(createdStory);
     }
 
     // API: Lấy Story Feed
     [HttpGet("feed")]
-    public async Task<IActionResult> GetStoryFeed()
+    public async Task<IActionResult> GetStoryFeed([FromQuery] StoryParams storyParams)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId == Guid.Empty)
@@ -68,23 +83,26 @@ public class StoryController(ApplicationDbContext context, IFileService fileServ
         idsToQuery.Add(currentUserId);
 
         // Truy vấn Story Feed
-        var storyFeed = await context.Stories
-            .Include(s => s.User) // Lấy thông tin tác giả
-            .Where(s => idsToQuery.Contains(s.UserId)) // Chỉ lấy của mình và bạn bè
-            .OrderByDescending(s => s.CreatedAt) // Mới nhất xếp trước
-            .Select(s => new StoryResponse
-            {
-                Id = s.Id,
-                MediaUrl = s.MediaUrl,
-                CreatedAt = s.CreatedAt,
-                ExpiresAt = s.ExpiresAt,
-                AuthorId = s.UserId,
-                AuthorName = s.User!.FullName,
-                AuthorAvatarUrl = s.User!.AvatarUrl
-            })
-            .ToListAsync();
+        var query = context.Stories
+             .Include(s => s.User)
+             .Where(s => idsToQuery.Contains(s.UserId))
+             .OrderByDescending(s => s.CreatedAt)
+             .Select(s => new StoryResponse
+             {
+                 Id = s.Id,
+                 MediaUrl = s.MediaUrl,
+                 CreatedAt = s.CreatedAt,
+                 ExpiresAt = s.ExpiresAt,
+                 AuthorId = s.UserId,
+                 AuthorName = s.User!.FullName,
+                 AuthorAvatarUrl = s.User!.AvatarUrl
+             });
 
-        return Ok(storyFeed);
+        var pagedStories = await PagedList<StoryResponse>.CreateAsync(query, storyParams.PageNumber, storyParams.PageSize);
+
+        Response.AddPaginationHeader(pagedStories.CurrentPage, pagedStories.PageSize, pagedStories.TotalCount, pagedStories.TotalPages);
+
+        return Ok(pagedStories);
     }
 
     // API: Xóa Story (Chủ động xóa trước 24h)
@@ -119,15 +137,15 @@ public class StoryController(ApplicationDbContext context, IFileService fileServ
 
     // API: Xem Kho lưu trữ tin (Story Archive)
     [HttpGet("archive")]
-    public async Task<IActionResult> GetStoryArchive()
+    public async Task<IActionResult> GetStoryArchive([FromQuery] StoryParams storyParams)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId == Guid.Empty)
             return Unauthorized(new ErrorResponse(ErrorCode.UNAUTHORIZED, "User identity not found."));
 
         // Lấy TOÀN BỘ Story của CHÍNH MÌNH (Bao gồm cả những cái đã quá 24h)
-        var myArchive = await context.Stories
-            .IgnoreQueryFilters() // Vô hiệu hóa bẫy ExpiresAt
+        var query = context.Stories
+            .IgnoreQueryFilters()
             .Include(s => s.User)
             .Where(s => s.UserId == currentUserId)
             .OrderByDescending(s => s.CreatedAt)
@@ -140,9 +158,13 @@ public class StoryController(ApplicationDbContext context, IFileService fileServ
                 AuthorId = s.UserId,
                 AuthorName = s.User!.FullName,
                 AuthorAvatarUrl = s.User!.AvatarUrl
-            })
-            .ToListAsync();
+            });
 
-        return Ok(myArchive);
+        // Bọc PagedList
+        var pagedArchive = await PagedList<StoryResponse>.CreateAsync(query, storyParams.PageNumber, storyParams.PageSize);
+
+        Response.AddPaginationHeader(pagedArchive.CurrentPage, pagedArchive.PageSize, pagedArchive.TotalCount, pagedArchive.TotalPages);
+
+        return Ok(pagedArchive);
     }
 }

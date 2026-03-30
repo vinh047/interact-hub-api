@@ -53,7 +53,34 @@ public class PostController(ApplicationDbContext context, IFileService fileServi
         context.Posts.Add(newPost);
         await context.SaveChangesAsync();
 
-        return Ok(new { message = "Post created successfully.", postId = newPost.Id });
+        var createdPost = await context.Posts
+            .Include(p => p.User) // Lấy thông tin người đăng
+            .Include(p => p.MediaFiles) // Lấy danh sách link ảnh/video vừa up
+            .Where(p => p.Id == newPost.Id)
+            .Select(p => new PostResponse
+            {
+                Id = p.Id,
+                Content = p.Content,
+                CreatedAt = p.CreatedAt,
+                AuthorId = p.UserId,
+                AuthorName = p.User!.FullName,
+                Visibility = p.Visibility,
+
+                // Vừa đăng xong thì chắc chắn là 0 like, 0 comment
+                CommentCount = 0,
+                LikeCount = 0,
+                IsLikedByCurrentUser = false,
+
+                MediaFiles = p.MediaFiles.Select(m => new PostMediaResponse
+                {
+                    Id = m.Id,
+                    MediaUrl = m.MediaUrl,
+                    MediaType = m.MediaType.ToString()
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(createdPost);
     }
 
     // API 2: Lấy danh sách bài viết (Mới nhất lên đầu)
@@ -144,7 +171,29 @@ public class PostController(ApplicationDbContext context, IFileService fileServi
         post.Visibility = newVisibility;
         await context.SaveChangesAsync();
 
-        return Ok(new { message = "Post visibility updated successfully." });
+        var updatedPost = await context.Posts
+            .Where(p => p.Id == post.Id)
+            .Select(p => new PostResponse
+            {
+                Id = p.Id,
+                Content = p.Content,
+                CreatedAt = p.CreatedAt,
+                AuthorId = p.UserId,
+                AuthorName = p.User!.FullName,
+                Visibility = p.Visibility,
+                CommentCount = p.Comments.Count(),
+                LikeCount = p.Likes.Count(),
+                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId),
+                MediaFiles = p.MediaFiles.Select(m => new PostMediaResponse
+                {
+                    Id = m.Id,
+                    MediaUrl = m.MediaUrl,
+                    MediaType = m.MediaType.ToString()
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(updatedPost);
     }
 
     [HttpGet("user/{userId}")]
@@ -207,7 +256,6 @@ public class PostController(ApplicationDbContext context, IFileService fileServi
     [HttpGet("{id}")]
     public async Task<IActionResult> GetPostById(Guid id)
     {
-        // update*: phần lấy currentUserId này sẽ lặp lại rất nhiều lần trong các API khác, nên mình sẽ tách ra 1 hàm riêng để tái sử dụng (DRY - Don't Repeat Yourself)
         var currentUserId = User.GetUserId();
         if (currentUserId == Guid.Empty)
             return Unauthorized(new ErrorResponse(ErrorCode.UNAUTHORIZED, "User identity not found."));
@@ -276,6 +324,28 @@ public class PostController(ApplicationDbContext context, IFileService fileServi
 
         await context.SaveChangesAsync();
 
-        return Ok(new { message = "Post updated successfully." });
+        var updatedPost = await context.Posts
+            .Where(p => p.Id == post.Id)
+            .Select(p => new PostResponse
+            {
+                Id = p.Id,
+                Content = p.Content,
+                CreatedAt = p.CreatedAt,
+                AuthorId = p.UserId,
+                AuthorName = p.User!.FullName,
+                Visibility = p.Visibility,
+                CommentCount = p.Comments.Count(),
+                LikeCount = p.Likes.Count(),
+                IsLikedByCurrentUser = p.Likes.Any(l => l.UserId == currentUserId),
+                MediaFiles = p.MediaFiles.Select(m => new PostMediaResponse
+                {
+                    Id = m.Id,
+                    MediaUrl = m.MediaUrl,
+                    MediaType = m.MediaType.ToString()
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(updatedPost);
     }
 }
