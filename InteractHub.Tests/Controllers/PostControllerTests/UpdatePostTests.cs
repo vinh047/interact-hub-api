@@ -51,13 +51,13 @@ public class UpdatePostTests : PostControllerTestBase
         var postInDb = await _context.Posts.FindAsync(postId);
         Assert.Equal("Nội dung đã được edit cực mạnh!", postInDb!.Content);
         // Đảm bảo thời gian UpdatedAt đã được hệ thống tự động ghi nhận
-        Assert.NotNull(postInDb.UpdatedAt); 
+        Assert.NotNull(postInDb.UpdatedAt);
     }
 
     // ==========================================
     // 2. NEGATIVE PATHS (Đường rủi ro)
     // ==========================================
-    
+
     [Fact]
     public async Task UpdatePost_PostDoesNotExist_ReturnsNotFound()
     {
@@ -78,12 +78,12 @@ public class UpdatePostTests : PostControllerTestBase
         // ARRANGE: Tạo bài viết của người khác
         var postId = Guid.NewGuid();
         var anotherUserId = Guid.NewGuid();
-        
+
         var existingPost = new Post
         {
             Id = postId,
             Content = "Bài của người khác, đố bạn sửa được",
-            UserId = anotherUserId, 
+            UserId = anotherUserId,
             Visibility = PostVisibility.Public
         };
         _context.Posts.Add(existingPost);
@@ -91,15 +91,14 @@ public class UpdatePostTests : PostControllerTestBase
 
         var updateRequest = new UpdatePostRequest { Content = "Tôi là hacker, tôi muốn sửa bài này" };
 
-        // ACT: Cố tình gọi hàm update
-        var result = await _controller.UpdatePost(postId, updateRequest);
-
-        // ASSERT: Phải bị chặn lại bằng mã 403
-        var forbiddenResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
+        // ACT & ASSERT: Đổi thành kiểm tra Exception
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _controller.UpdatePost(postId, updateRequest)
+        );
+        Assert.Equal("You do not have permission to update this post.", exception.Message);
 
         // Đảm bảo DB không bị thay đổi
         var postInDb = await _context.Posts.FindAsync(postId);
-        Assert.Equal("Bài của người khác, đố bạn sửa được", postInDb!.Content); // Nội dung gốc giữ nguyên
+        Assert.Equal("Bài của người khác, đố bạn sửa được", postInDb!.Content);
     }
 }

@@ -19,20 +19,29 @@ public class GetNewsFeedTests : PostControllerTestBase
     {
         // ARRANGE: Cài cắm dữ liệu vào DB ảo
         // Tạo 3 bài viết với thời gian và quyền riêng tư khác nhau
-        var privatePost = new Post 
-        { 
-            Id = Guid.NewGuid(), Content = "Bài Private (Ẩn)", Visibility = PostVisibility.Private, 
-            UserId = _testUserId, CreatedAt = DateTime.UtcNow.AddMinutes(-5) 
+        var privatePost = new Post
+        {
+            Id = Guid.NewGuid(),
+            Content = "Bài Private (Ẩn)",
+            Visibility = PostVisibility.Private,
+            UserId = _testUserId,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-5)
         };
-        var publicOldPost = new Post 
-        { 
-            Id = Guid.NewGuid(), Content = "Bài Public Cũ", Visibility = PostVisibility.Public, 
-            UserId = _testUserId, CreatedAt = DateTime.UtcNow.AddMinutes(-10) 
+        var publicOldPost = new Post
+        {
+            Id = Guid.NewGuid(),
+            Content = "Bài Public Cũ",
+            Visibility = PostVisibility.Public,
+            UserId = _testUserId,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-10)
         };
-        var publicNewPost = new Post 
-        { 
-            Id = Guid.NewGuid(), Content = "Bài Public Mới", Visibility = PostVisibility.Public, 
-            UserId = _testUserId, CreatedAt = DateTime.UtcNow.AddMinutes(-1) 
+        var publicNewPost = new Post
+        {
+            Id = Guid.NewGuid(),
+            Content = "Bài Public Mới",
+            Visibility = PostVisibility.Public,
+            UserId = _testUserId,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-1)
         };
 
         _context.Posts.AddRange(privatePost, publicOldPost, publicNewPost);
@@ -45,7 +54,7 @@ public class GetNewsFeedTests : PostControllerTestBase
 
         // ASSERT: Xác nhận sự thật
         var okResult = Assert.IsType<OkObjectResult>(result);
-        
+
         // Dữ liệu trả về phải là một danh sách các PostResponse
         var returnedPosts = Assert.IsAssignableFrom<IEnumerable<PostResponse>>(okResult.Value).ToList();
 
@@ -81,10 +90,9 @@ public class GetNewsFeedTests : PostControllerTestBase
         var queryParams = new PostQueryParameters();
 
         // ACT
-        var result = await _controller.GetNewsFeed(queryParams);
-
-        // ASSERT: Phải bị đá ra bằng mã 401
-        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-        Assert.Equal(StatusCodes.Status401Unauthorized, unauthorizedResult.StatusCode);
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        () => _controller.GetNewsFeed(new PostQueryParameters())
+    );
+        Assert.Equal("User identity not found in token.", exception.Message);
     }
 }

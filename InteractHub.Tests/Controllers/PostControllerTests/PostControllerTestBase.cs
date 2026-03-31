@@ -22,7 +22,7 @@ public abstract class PostControllerTestBase : IDisposable
     {
         // 1. Setup In-Memory Database (DB Ảo)
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // DB name random để không đụng hàng
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _context = new ApplicationDbContext(options);
 
@@ -40,7 +40,8 @@ public abstract class PostControllerTestBase : IDisposable
         _mockFileService = new Mock<IFileService>();
 
         // 3. Khởi tạo Controller với các đồ giả (Mock)
-        _controller = new PostController(_context, _mockFileService.Object);
+        var realPostService = new PostService(_context, _mockFileService.Object);
+        _controller = new PostController(realPostService);
 
         // 4. Giả lập người dùng đã Đăng nhập (Vì API có gắn [Authorize])
         var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]

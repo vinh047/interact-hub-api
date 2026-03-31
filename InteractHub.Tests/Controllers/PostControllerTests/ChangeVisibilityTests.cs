@@ -52,11 +52,10 @@ public class ChangeVisibilityTests : PostControllerTestBase
         });
         await _context.SaveChangesAsync();
 
-        // ACT
-        var result = await _controller.ChangeVisibility(postId, PostVisibility.Private);
-
-        // ASSERT
-        var forbiddenResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
+        // ACT & ASSERT: Đổi thành kiểm tra Exception
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _controller.ChangeVisibility(postId, PostVisibility.Private)
+        );
+        Assert.Equal("You do not have permission to modify this post.", exception.Message);
     }
 }

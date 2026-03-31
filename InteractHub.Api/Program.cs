@@ -4,6 +4,7 @@ using InteractHub.Api.Data;
 using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Entities;
 using InteractHub.Api.Enums;
+using InteractHub.Api.Middlewares;
 using InteractHub.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -98,6 +99,8 @@ builder.Services.AddHttpContextAccessor();
 // Đăng ký dịch vụ FileService (Plug & Play)
 builder.Services.AddScoped<IFileService, LocalFileService>();
 
+builder.Services.AddScoped<IPostService, PostService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -106,6 +109,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 

@@ -10,7 +10,7 @@ namespace InteractHub.Tests.Controllers.PostControllerTests;
 
 public class CreatePostTests : PostControllerTestBase // <-- Kế thừa ở đây
 {
-    
+
     [Fact] // Đánh dấu đây là 1 Test Case cho xUnit biết
     public async Task CreatePost_WithValidTextOnly_ReturnsOkResult()
     {
@@ -44,7 +44,7 @@ public class CreatePostTests : PostControllerTestBase // <-- Kế thừa ở đ�
         // ==========================================
         // 1. ARRANGE (Chuẩn bị hiện trường giả)
         // ==========================================
-        
+
         // A. Nặn ra một cái File ảo (Mock IFormFile) bằng không khí
         var mockFile = new Mock<IFormFile>();
         mockFile.Setup(f => f.FileName).Returns("test-avatar.jpg");
@@ -73,7 +73,7 @@ public class CreatePostTests : PostControllerTestBase // <-- Kế thừa ở đ�
         // ==========================================
         // 3. ASSERT (Kiểm tra lời nói dối có lọt lưới không)
         // ==========================================
-        
+
         // Trả về 200 OK
         Assert.IsType<OkObjectResult>(result);
 
@@ -83,17 +83,17 @@ public class CreatePostTests : PostControllerTestBase // <-- Kế thừa ở đ�
             .FirstOrDefaultAsync(p => p.Content.Contains("có kèm ảnh"));
 
         Assert.NotNull(savedPost);
-        
+
         // Phải có đúng 1 tấm ảnh trong Database
-        Assert.Single(savedPost.MediaFiles); 
-        
+        Assert.Single(savedPost.MediaFiles);
+
         var savedMedia = savedPost.MediaFiles.First();
-        
+
         // Link lưu trong DB phải đúng là cái link ảo mà mình ép IFileService nhả ra lúc nãy
-        Assert.Equal("https://interacthub.local/uploads/test-avatar.jpg", savedMedia.MediaUrl); 
-        
+        Assert.Equal("https://interacthub.local/uploads/test-avatar.jpg", savedMedia.MediaUrl);
+
         // Hệ thống phải nhận diện đúng nó là Image (nhờ ContentType mình set là image/jpeg)
-        Assert.Equal(MediaType.Image, savedMedia.MediaType); 
+        Assert.Equal(MediaType.Image, savedMedia.MediaType);
     }
 
     [Fact]
@@ -119,19 +119,15 @@ public class CreatePostTests : PostControllerTestBase // <-- Kế thừa ở đ�
         };
 
         // ==========================================
-        // 2. ACT
+        // 2. ACT & ASSERT
         // ==========================================
-        var result = await _controller.CreatePost(request);
-
-        // ==========================================
-        // 3. ASSERT
-        // ==========================================
-        // Phải bị hệ thống "đá" ra với mã 401 Unauthorized
-        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-        Assert.Equal(StatusCodes.Status401Unauthorized, unauthorizedResult.StatusCode);
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _controller.CreatePost(request)
+        );
+        Assert.Equal("User identity not found in token.", exception.Message);
 
         // Đảm bảo không có bài viết "rác" nào bị lọt vào Database
         var postsInDb = await _context.Posts.ToListAsync();
-        Assert.Empty(postsInDb); 
+        Assert.Empty(postsInDb);
     }
 }
