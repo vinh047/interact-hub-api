@@ -100,6 +100,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IFileService, LocalFileService>();
 
 builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 
 var app = builder.Build();
 
