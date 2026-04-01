@@ -102,6 +102,7 @@ builder.Services.AddScoped<IFileService, LocalFileService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<ILikeService, LikeService>();
+builder.Services.AddScoped<IStoryService, StoryService>();
 
 var app = builder.Build();
 

@@ -51,6 +51,10 @@ public class GlobalExceptionMiddleware
                 message = exception.Message;
                 break;
             // Bạn có thể thêm các case khác như ArgumentException -> 400 BadRequest
+            case ArgumentException:
+                statusCode = (int)HttpStatusCode.BadRequest;
+                message = exception.Message;
+                break;
         }
 
         context.Response.StatusCode = statusCode;
