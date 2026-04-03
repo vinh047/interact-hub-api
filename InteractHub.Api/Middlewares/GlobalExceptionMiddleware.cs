@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using InteractHub.Api.Enums;
 
 namespace InteractHub.Api.Middlewares;
 
@@ -36,6 +37,8 @@ public class GlobalExceptionMiddleware
         // Mặc định mọi lỗi không lường trước được tính là lỗi 500 (Sập server)
         var statusCode = (int)HttpStatusCode.InternalServerError;
         var message = "Đã xảy ra lỗi hệ thống cục bộ.";
+        var errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+
 
         // PHIÊN DỊCH LỖI: Chuyển các Exception C# thành HTTP Status Code
         switch (exception)
@@ -55,6 +58,13 @@ public class GlobalExceptionMiddleware
                 statusCode = (int)HttpStatusCode.BadRequest;
                 message = exception.Message;
                 break;
+            case InvalidOperationException:
+                statusCode = (int)HttpStatusCode.Conflict; // Chuyển thành lỗi 409
+                message = exception.Message; // Lấy đúng câu "You are already friends..."
+                
+                // Nếu Middleware của bạn có cấu hình trả về ErrorCode thì gán thêm dòng dưới:
+                errorCode = ErrorCode.CONFLICT; 
+                break;
         }
 
         context.Response.StatusCode = statusCode;
@@ -63,7 +73,8 @@ public class GlobalExceptionMiddleware
         var response = new 
         { 
             code = statusCode,
-            message = message 
+            message = message,
+            errorCode = errorCode // Nếu bạn có thêm trường này trong ErrorResponse thì gán vào đây
         };
 
         var json = JsonSerializer.Serialize(response);

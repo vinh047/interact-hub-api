@@ -37,10 +37,10 @@ public class PostController(IPostService postService) : BaseController
     }
 
     [HttpPatch("{id}/visibility")]
-    public async Task<IActionResult> ChangeVisibility(Guid id, [FromBody] PostVisibility newVisibility)
+    public async Task<IActionResult> ChangeVisibility(Guid id, [FromBody] ChangeVisibilityRequest request)
     {
         // GỌN GÀNG!
-        var result = await postService.ChangeVisibilityAsync(id, newVisibility, CurrentUserId);
+        var result = await postService.ChangeVisibilityAsync(id, request.Visibility, CurrentUserId);
         if (result == null) return NotFound(new ErrorResponse(ErrorCode.POST_NOT_FOUND, "Post not found."));
         return Ok(result);
     }

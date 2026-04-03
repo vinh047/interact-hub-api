@@ -5,7 +5,7 @@ namespace InteractHub.Api.DTOs.Requests.Post;
 
 public class CreatePostRequest
 {
-    [Required(ErrorMessage = "Nội dung bài viết không được để trống")]
+    [Required]
     [MaxLength(2000)]
     public required string Content { get; set; }
 

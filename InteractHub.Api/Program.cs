@@ -8,6 +8,7 @@ using InteractHub.Api.Middlewares;
 using InteractHub.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -84,7 +85,32 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Thêm dịch vụ Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+.ConfigureApiBehaviorOptions(options =>
+    {
+        // Ghi đè hành vi trả về lỗi mặc định của Model Validation
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            // 1. Thu thập tất cả các lỗi từ DataAnnotations ([Required], [MaxLength]...)
+            var errors = context.ModelState
+                .Where(e => e.Value != null && e.Value.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key, // Tên field bị lỗi (VD: "Content")
+                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray() // Danh sách câu thông báo lỗi
+                );
+
+            // 2. Gói nó vào trong ErrorResponse chuẩn của bạn
+            var errorResponse = new ErrorResponse(
+                ErrorCode.BAD_REQUEST, 
+                "Invalid input data. Please check your request and try again.",
+                errors
+            );
+
+            // 3. Trả về mã 400 Bad Request kèm theo cục JSON xịn xò này
+            return new BadRequestObjectResult(errorResponse);
+        };
+    });
+    
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
 // Add services to the container.
@@ -97,7 +123,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 
 // Đăng ký dịch vụ FileService (Plug & Play)
-builder.Services.AddScoped<IFileService, LocalFileService>();
+// builder.Services.AddScoped<IFileService, LocalFileService>();
+builder.Services.AddScoped<IFileService, AzureBlobFileService>();
 
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
@@ -127,5 +154,44 @@ app.UseAuthorization();
 
 // Map các đường dẫn API tới các Controller
 app.MapControllers();
+
+// ================= BẮT ĐẦU ĐOẠN SEED DATA =================
+// Tạo một scope tạm thời để lấy các Service (DbContext, UserManager) ra dùng
+if (app.Environment.IsDevelopment() && args.Contains("--seed")) 
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<ApplicationDbContext>();
+            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
+            // 1. Xóa sạch Database hiện tại (Cực kỳ mạnh mẽ!)
+            Console.WriteLine("--> Đang xóa Database cũ...");
+            await context.Database.EnsureDeletedAsync();
+
+            // 2. Chạy lại các Migration để tạo cấu trúc bảng mới nhất
+            Console.WriteLine("--> Đang khởi tạo cấu trúc Database (Migration)...");
+            await context.Database.MigrateAsync();
+
+            // 3. Nạp dữ liệu giả từ file SeedData.cs
+            Console.WriteLine("--> Đang nạp dữ liệu Seed...");
+            await SeedData.SeedDatabaseAsync(context, userManager);
+
+            Console.WriteLine("==> SEED DATA THÀNH CÔNG! HỆ THỐNG ĐÃ SẴN SÀNG.");
+            
+            // Sau khi seed xong thường chúng ta sẽ dừng app để bạn chạy lại bình thường
+            return; 
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Lỗi nghiêm trọng khi đang Seed Data.");
+            return;
+        }
+    }
+}
+// ================= KẾT THÚC ĐOẠN SEED DATA =================
 
 app.Run();
