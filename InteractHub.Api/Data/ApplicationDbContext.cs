@@ -14,6 +14,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Like> Likes => Set<Like>();
     public DbSet<Story> Stories => Set<Story>();
     public DbSet<PostMedia> PostMedia => Set<PostMedia>();
+    public DbSet<Hashtag> Hashtags { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<PostReport> PostReports { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -107,11 +110,42 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // CẤU HÌNH BẢNG POST MEDIA
         // ==========================================
         builder.Entity<PostMedia>().HasQueryFilter(pm => !pm.Post!.IsDeleted);
-        
+
         builder.Entity<PostMedia>()
             .HasOne(pm => pm.Post)
             .WithMany(p => p.MediaFiles)
             .HasForeignKey(pm => pm.PostId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // 1. Cấu hình Hashtag Name là Unique
+        builder.Entity<Hashtag>()
+            .HasIndex(h => h.Name)
+            .IsUnique();
+
+        // 2. Cấu hình Notification (Chống lỗi vòng lặp Cascade xóa User)
+        builder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany(u => u.Notifications) // Nhớ thêm ICollection<Notification> Notifications vào ApplicationUser.cs nếu bạn muốn
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade); // Xóa User -> Xóa thông báo của họ
+
+        builder.Entity<Notification>()
+            .HasOne(n => n.Issuer)
+            .WithMany() // Issuer không cần list Notification
+            .HasForeignKey(n => n.IssuerId)
+            .OnDelete(DeleteBehavior.Restrict); // Chống lỗi Cascade: Không cho xóa User nếu họ đang là Issuer của 1 thông báo
+
+        // 3. Cấu hình PostReport
+        builder.Entity<PostReport>()
+            .HasOne(pr => pr.Reporter)
+            .WithMany()
+            .HasForeignKey(pr => pr.ReporterId)
+            .OnDelete(DeleteBehavior.Restrict); // Không cho xóa User nếu họ đang có report
+
+        builder.Entity<PostReport>()
+            .HasOne(pr => pr.Post)
+            .WithMany() // Post không cần lưu list Report
+            .HasForeignKey(pr => pr.PostId)
+            .OnDelete(DeleteBehavior.Cascade); // Xóa bài viết -> Xóa luôn report của bài đó
     }
 }

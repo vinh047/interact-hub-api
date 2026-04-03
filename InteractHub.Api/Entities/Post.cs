@@ -20,4 +20,7 @@ public class Post : BaseEntity
     public ICollection<Like> Likes { get; set; } = new List<Like>();
 
     public ICollection<PostMedia> MediaFiles { get; set; } = new List<PostMedia>();
+
+    public ICollection<Hashtag> Hashtags { get; set; } = new List<Hashtag>();
+
 }
