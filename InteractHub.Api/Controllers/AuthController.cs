@@ -2,7 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using InteractHub.Api.DTOs;
+using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Entities;
+using InteractHub.Api.Enums;
+using InteractHub.Api.Helpers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -19,7 +23,10 @@ public class AuthController(UserManager<ApplicationUser> userManager, IConfigura
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            return BadRequest(new { message = "Email này đã được sử dụng!" });
+            return BadRequest(new ErrorResponse(
+                ErrorCode.EMAIL_ALREADY_EXISTS,
+                "This email is already in use."
+            ));
         }
 
         var newUser = new ApplicationUser
@@ -33,29 +40,62 @@ public class AuthController(UserManager<ApplicationUser> userManager, IConfigura
 
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            var errorDetails = result.Errors
+                .GroupBy(e => e.Code)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(e => e.Description).ToArray()
+                );
+
+            return BadRequest(new ErrorResponse(
+                ErrorCode.BAD_REQUEST,
+                "Registration failed. Please check the provided information.",
+                errorDetails
+            ));
         }
 
-        return Ok(new { message = "Đăng ký tài khoản thành công!" });
+        return Ok(new { message = "User registered successfully!" });
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
-            return Unauthorized(new { message = "Tài khoản không tồn tại." });
+            return Unauthorized(new ErrorResponse(
+                ErrorCode.USER_NOT_FOUND,
+                "Invalid email or password."
+            ));
         }
 
         var isPasswordValid = await userManager.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
         {
-            return Unauthorized(new { message = "Mật khẩu không chính xác." });
+            return Unauthorized(new ErrorResponse(
+                ErrorCode.INVALID_PASSWORD,
+                "Invalid email or password."
+            ));
         }
 
         var token = GenerateJwtToken(user);
-        return Ok(new { token, message = "Đăng nhập thành công!" });
+
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,   // Chỉ gửi qua HTTPS
+            SameSite = SameSiteMode.None,
+            Expires = DateTime.UtcNow.AddDays(7)
+        };
+
+        Response.Cookies.Append("jwtToken", token, cookieOptions);
+
+        return Ok(new
+        {
+            message = "Login successful!",
+            user = new { id = user.Id, email = user.Email, fullName = user.FullName }
+        });
     }
 
     private string GenerateJwtToken(ApplicationUser user)
@@ -72,7 +112,7 @@ public class AuthController(UserManager<ApplicationUser> userManager, IConfigura
         };
 
         var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(secretKey), 
+            new SymmetricSecurityKey(secretKey),
             SecurityAlgorithms.HmacSha256);
 
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -88,5 +128,36 @@ public class AuthController(UserManager<ApplicationUser> userManager, IConfigura
         var securityToken = tokenHandler.CreateToken(tokenDescriptor);
 
         return tokenHandler.WriteToken(securityToken);
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("jwtToken", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None
+        });
+        return Ok(new { message = "Logout successful." });
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentUser()
+    {
+        // Lấy ID từ Claim trong JWT Token (Cookie)
+        var userId = User.GetUserId();
+        var user = await userManager.FindByIdAsync(userId.ToString());
+
+        if (user == null) return Unauthorized();
+
+        return Ok(new
+        {
+            id = user.Id,
+            email = user.Email,
+            fullName = user.FullName,
+            AvatarUrl = user.AvatarUrl,
+        });
     }
 }

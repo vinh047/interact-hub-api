@@ -58,6 +58,16 @@ builder.Services.AddAuthentication(options =>
 
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["jwtToken"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        },
+
         OnChallenge = async context =>
         {
             // 1. Tắt phản hồi 401 rỗng mặc định của Microsoft
@@ -74,11 +84,11 @@ builder.Services.AddAuthentication(options =>
             );
 
             // 4. Biến Object thành chuỗi JSON (camelCase mặc định) và gửi về Frontend
-            var jsonResult = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+            var jsonResult = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
-            
+
             await context.Response.WriteAsync(jsonResult);
         }
     };
@@ -101,7 +111,7 @@ builder.Services.AddControllers()
 
             // 2. Gói nó vào trong ErrorResponse chuẩn của bạn
             var errorResponse = new ErrorResponse(
-                ErrorCode.BAD_REQUEST, 
+                ErrorCode.BAD_REQUEST,
                 "Invalid input data. Please check your request and try again.",
                 errors
             );
@@ -110,7 +120,7 @@ builder.Services.AddControllers()
             return new BadRequestObjectResult(errorResponse);
         };
     });
-    
+
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
 // Add services to the container.
@@ -132,6 +142,17 @@ builder.Services.AddScoped<ILikeService, LikeService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<IFriendshipService, FriendshipService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") // Cổng của Vite/React
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Cho phép gửi Cookie/Token nếu cần
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -148,6 +169,8 @@ app.UseHttpsRedirection();
 // THÊM DÒNG NÀY ĐỂ MỞ CỬA CHO PHÉP TRUY CẬP ẢNH TỪ THƯ MỤC wwwroot
 app.UseStaticFiles();
 
+app.UseCors("AllowReactApp");
+
 // Kích hoạt Authentication/Authorization
 app.UseAuthentication();
 app.UseAuthorization();
@@ -157,7 +180,7 @@ app.MapControllers();
 
 // ================= BẮT ĐẦU ĐOẠN SEED DATA =================
 // Tạo một scope tạm thời để lấy các Service (DbContext, UserManager) ra dùng
-if (app.Environment.IsDevelopment() && args.Contains("--seed")) 
+if (app.Environment.IsDevelopment() && args.Contains("--seed"))
 {
     using (var scope = app.Services.CreateScope())
     {
@@ -180,9 +203,9 @@ if (app.Environment.IsDevelopment() && args.Contains("--seed"))
             await SeedData.SeedDatabaseAsync(context, userManager);
 
             Console.WriteLine("==> SEED DATA THÀNH CÔNG! HỆ THỐNG ĐÃ SẴN SÀNG.");
-            
+
             // Sau khi seed xong thường chúng ta sẽ dừng app để bạn chạy lại bình thường
-            return; 
+            return;
         }
         catch (Exception ex)
         {
