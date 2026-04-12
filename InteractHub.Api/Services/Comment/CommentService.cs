@@ -100,7 +100,7 @@ public class CommentService(ApplicationDbContext context) : ICommentService
             .OrderByDescending(c => c.CreatedAt)
             .MapToCommentResponse(context);
 
-        return await PagedList<CommentResponse>.CreateAsync(query, commentParams.PageNumber, commentParams.PageSize);
+        return await PagedList<CommentResponse>.CreateAsync(query, commentParams.Page, commentParams.PageSize);
     }
 
     public async Task<PagedList<CommentResponse>?> GetRepliesByCommentIdAsync(Guid commentId, CommentParams commentParams)
@@ -114,6 +114,6 @@ public class CommentService(ApplicationDbContext context) : ICommentService
             .OrderBy(c => c.CreatedAt)
             .MapToCommentResponse(context);
 
-        return await PagedList<CommentResponse>.CreateAsync(query, commentParams.PageNumber, commentParams.PageSize);
+        return await PagedList<CommentResponse>.CreateAsync(query, commentParams.Page, commentParams.PageSize);
     }
 }

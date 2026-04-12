@@ -2,14 +2,14 @@ namespace InteractHub.Api.DTOs.Requests;
 
 public abstract class PaginationParams
 {
-    public int PageNumber { get; set; } = 1; 
+    public int Page { get; set; } = 1; 
     
-    private int _pageSize = 10;
-    protected const int MaxPageSize = 50; 
+    private int _limit = 10;
+    protected const int MaxLimit = 50; 
 
     public int PageSize
     {
-        get => _pageSize;
-        set => _pageSize = (value > MaxPageSize) ? MaxPageSize : value;
+        get => _limit;
+        set => _limit = (value > MaxLimit) ? MaxLimit : value;
     }
 }

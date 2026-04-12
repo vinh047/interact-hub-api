@@ -57,7 +57,7 @@ public class StoryService(ApplicationDbContext context, IFileService fileService
              .OrderByDescending(s => s.CreatedAt)
              .MapToStoryResponse();
 
-        return await PagedList<StoryResponse>.CreateAsync(query, storyParams.PageNumber, storyParams.PageSize);
+        return await PagedList<StoryResponse>.CreateAsync(query, storyParams.Page, storyParams.PageSize);
     }
 
     public async Task<bool> DeleteStoryAsync(Guid id, Guid currentUserId)
@@ -86,6 +86,6 @@ public class StoryService(ApplicationDbContext context, IFileService fileService
             .OrderByDescending(s => s.CreatedAt)
             .MapToStoryResponse();
 
-        return await PagedList<StoryResponse>.CreateAsync(query, storyParams.PageNumber, storyParams.PageSize);
+        return await PagedList<StoryResponse>.CreateAsync(query, storyParams.Page, storyParams.PageSize);
     }
 }

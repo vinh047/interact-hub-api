@@ -4,12 +4,12 @@ namespace InteractHub.Api.Helpers;
 
 public static class HttpExtensions
 {
-    public static void AddPaginationHeader(this HttpResponse response, int currentPage, int itemsPerPage, int totalItems, int totalPages)
+    public static void AddPaginationHeader(this HttpResponse response, int currentPage, int limit, int totalItems, int totalPages)
     {
         var paginationMetadata = new
         {
             currentPage,
-            itemsPerPage,
+            limit,
             totalItems,
             totalPages
         };

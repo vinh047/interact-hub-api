@@ -25,7 +25,7 @@ public class StoryController(IStoryService storyService) : BaseController
     {
         var pagedStories = await storyService.GetStoryFeedAsync(storyParams, CurrentUserId);
         
-        Response.AddPaginationHeader(pagedStories.CurrentPage, pagedStories.PageSize, pagedStories.TotalCount, pagedStories.TotalPages);
+        Response.AddPaginationHeader(pagedStories.CurrentPage, pagedStories.Limit, pagedStories.TotalCount, pagedStories.TotalPages);
         return Ok(pagedStories);
     }
 
@@ -46,7 +46,7 @@ public class StoryController(IStoryService storyService) : BaseController
     {
         var pagedArchive = await storyService.GetStoryArchiveAsync(storyParams, CurrentUserId);
         
-        Response.AddPaginationHeader(pagedArchive.CurrentPage, pagedArchive.PageSize, pagedArchive.TotalCount, pagedArchive.TotalPages);
+        Response.AddPaginationHeader(pagedArchive.CurrentPage, pagedArchive.Limit, pagedArchive.TotalCount, pagedArchive.TotalPages);
         return Ok(pagedArchive);
     }
 }

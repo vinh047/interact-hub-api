@@ -23,7 +23,7 @@ public class PostController(IPostService postService) : BaseController
     public async Task<IActionResult> GetNewsFeed([FromQuery] PostQueryParameters queryParams)
     {
         var pagedPosts = await postService.GetNewsFeedAsync(queryParams, CurrentUserId);
-        Response.AddPaginationHeader(pagedPosts.CurrentPage, pagedPosts.PageSize, pagedPosts.TotalCount, pagedPosts.TotalPages);
+        Response.AddPaginationHeader(pagedPosts.CurrentPage, pagedPosts.Limit, pagedPosts.TotalCount, pagedPosts.TotalPages);
         return Ok(pagedPosts);
     }
 
@@ -49,7 +49,7 @@ public class PostController(IPostService postService) : BaseController
     public async Task<IActionResult> GetUserPosts(Guid userId, [FromQuery] PostQueryParameters queryParams)
     {
         var pagedPosts = await postService.GetUserPostsAsync(userId, queryParams, CurrentUserId);
-        Response.AddPaginationHeader(pagedPosts.CurrentPage, pagedPosts.PageSize, pagedPosts.TotalCount, pagedPosts.TotalPages);
+        Response.AddPaginationHeader(pagedPosts.CurrentPage, pagedPosts.Limit, pagedPosts.TotalCount, pagedPosts.TotalPages);
         return Ok(pagedPosts);
     }
 

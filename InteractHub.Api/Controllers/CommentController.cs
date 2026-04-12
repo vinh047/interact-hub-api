@@ -50,7 +50,7 @@ public class CommentController(ICommentService commentService) : BaseController
         if (pagedComments == null) 
             return NotFound(new ErrorResponse(ErrorCode.POST_NOT_FOUND, "Post not found."));
 
-        Response.AddPaginationHeader(pagedComments.CurrentPage, pagedComments.PageSize, pagedComments.TotalCount, pagedComments.TotalPages);
+        Response.AddPaginationHeader(pagedComments.CurrentPage, pagedComments.Limit, pagedComments.TotalCount, pagedComments.TotalPages);
         
         return Ok(pagedComments);
     }
@@ -64,7 +64,7 @@ public class CommentController(ICommentService commentService) : BaseController
         if (pagedReplies == null) 
             return NotFound(new ErrorResponse(ErrorCode.COMMENT_NOT_FOUND, "Parent comment not found."));
 
-        Response.AddPaginationHeader(pagedReplies.CurrentPage, pagedReplies.PageSize, pagedReplies.TotalCount, pagedReplies.TotalPages);
+        Response.AddPaginationHeader(pagedReplies.CurrentPage, pagedReplies.Limit, pagedReplies.TotalCount, pagedReplies.TotalPages);
         
         return Ok(pagedReplies);
     }

@@ -48,7 +48,7 @@ public class FriendshipController(IFriendshipService friendshipService) : BaseCo
     {
         var pagedFriends = await friendshipService.GetFriendsAsync(friendshipParams, CurrentUserId);
         
-        Response.AddPaginationHeader(pagedFriends.CurrentPage, pagedFriends.PageSize, pagedFriends.TotalCount, pagedFriends.TotalPages);
+        Response.AddPaginationHeader(pagedFriends.CurrentPage, pagedFriends.Limit, pagedFriends.TotalCount, pagedFriends.TotalPages);
         
         return Ok(pagedFriends);
     }
@@ -58,7 +58,7 @@ public class FriendshipController(IFriendshipService friendshipService) : BaseCo
     {
         var pagedRequests = await friendshipService.GetPendingRequestsAsync(friendshipParams, CurrentUserId);
         
-        Response.AddPaginationHeader(pagedRequests.CurrentPage, pagedRequests.PageSize, pagedRequests.TotalCount, pagedRequests.TotalPages);
+        Response.AddPaginationHeader(pagedRequests.CurrentPage, pagedRequests.Limit, pagedRequests.TotalCount, pagedRequests.TotalPages);
         
         return Ok(pagedRequests);
     }
