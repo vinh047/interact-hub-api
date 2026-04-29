@@ -7,7 +7,7 @@ public abstract class PaginationParams
     private int _limit = 10;
     protected const int MaxLimit = 50; 
 
-    public int PageSize
+    public int Limit
     {
         get => _limit;
         set => _limit = (value > MaxLimit) ? MaxLimit : value;

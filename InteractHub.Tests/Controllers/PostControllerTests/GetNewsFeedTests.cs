@@ -47,7 +47,7 @@ public class GetNewsFeedTests : PostControllerTestBase
         _context.Posts.AddRange(privatePost, publicOldPost, publicNewPost);
         await _context.SaveChangesAsync();
 
-        var queryParams = new PostQueryParameters { Page = 1, PageSize = 10 };
+        var queryParams = new PostQueryParameters { Page = 1, Limit = 10 };
 
         // ACT: Gọi API
         var result = await _controller.GetNewsFeed(queryParams);

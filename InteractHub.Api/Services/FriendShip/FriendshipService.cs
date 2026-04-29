@@ -93,7 +93,7 @@ public class FriendshipService(ApplicationDbContext context) : IFriendshipServic
             .MapToFriendUserResponse(currentUserId) // Dùng Extension siêu gọn
             .OrderByDescending(f => f.CreatedAt);
 
-        return await PagedList<FriendUserResponse>.CreateAsync(query, friendshipParams.Page, friendshipParams.PageSize);
+        return await PagedList<FriendUserResponse>.CreateAsync(query, friendshipParams.Page, friendshipParams.Limit);
     }
 
     public async Task<PagedList<FriendUserResponse>> GetPendingRequestsAsync(FriendshipParams friendshipParams, Guid currentUserId)
@@ -103,6 +103,6 @@ public class FriendshipService(ApplicationDbContext context) : IFriendshipServic
             .MapToFriendUserResponse(currentUserId) // Dùng Extension siêu gọn
             .OrderByDescending(f => f.CreatedAt);
 
-        return await PagedList<FriendUserResponse>.CreateAsync(query, friendshipParams.Page, friendshipParams.PageSize);
+        return await PagedList<FriendUserResponse>.CreateAsync(query, friendshipParams.Page, friendshipParams.Limit);
     }
 }

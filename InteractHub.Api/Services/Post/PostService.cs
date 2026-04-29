@@ -38,7 +38,7 @@ public class PostService(ApplicationDbContext context, IFileService fileService)
             .OrderByDescending(p => p.CreatedAt)
             .MapToPostResponse(currentUserId);
 
-        return await PagedList<PostResponse>.CreateAsync(query, queryParams.Page, queryParams.PageSize);
+        return await PagedList<PostResponse>.CreateAsync(query, queryParams.Page, queryParams.Limit);
     }
 
     public async Task<bool> DeletePostAsync(Guid id, Guid currentUserId)
@@ -84,7 +84,7 @@ public class PostService(ApplicationDbContext context, IFileService fileService)
         }
 
         var selectQuery = query.MapToPostResponse(currentUserId);
-        return await PagedList<PostResponse>.CreateAsync(selectQuery, queryParams.Page, queryParams.PageSize);
+        return await PagedList<PostResponse>.CreateAsync(selectQuery, queryParams.Page, queryParams.Limit);
     }
 
     public async Task<PostResponse?> GetPostByIdAsync(Guid id, Guid currentUserId)

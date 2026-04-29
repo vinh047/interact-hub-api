@@ -149,7 +149,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173") // Cổng của Vite/React
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Cho phép gửi Cookie/Token nếu cần
+              .AllowCredentials() // Cho phép gửi Cookie/Token nếu cần
+              .WithExposedHeaders("X-Pagination");
     });
 });
 

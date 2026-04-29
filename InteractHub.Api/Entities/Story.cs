@@ -8,7 +8,7 @@ public class Story : BaseEntity
     [Required]
     public required string MediaUrl { get; set; } // Chứa link ảnh hoặc video
 
-    // Cột cực kỳ quan trọng: Thời điểm hết hạn (Thường là CreatedAt + 24h)
+    // Cột cực kỳ quan trọng: Thời điểm hết hạn (Thường là CreatedAt + 24h)               
     public DateTime ExpiresAt { get; set; }
 
     public Guid UserId { get; set; }
