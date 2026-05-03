@@ -4,6 +4,7 @@ using InteractHub.Api.Data;
 using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Entities;
 using InteractHub.Api.Enums;
+using InteractHub.Api.Hubs;
 using InteractHub.Api.Middlewares;
 using InteractHub.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -61,10 +62,22 @@ builder.Services.AddAuthentication(options =>
         OnMessageReceived = context =>
         {
             var token = context.Request.Cookies["jwtToken"];
-            if (!string.IsNullOrEmpty(token))
+
+            var accessToken = context.Request.Query["access_token"];
+
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/notification"))
             {
+                // Ưu tiên Token từ Query String nếu SignalR tự động chèn vào
+                context.Token = accessToken;
+            }
+            else if (!string.IsNullOrEmpty(token))
+            {
+                // Dùng Token từ Cookie cho SignalR (nếu có withCredentials) và các API thông thường
                 context.Token = token;
             }
+
             return Task.CompletedTask;
         },
 
@@ -141,6 +154,12 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<ILikeService, LikeService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<IFriendshipService, FriendshipService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.AddSignalR();
+
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
 
 builder.Services.AddCors(options =>
 {
@@ -178,6 +197,8 @@ app.UseAuthorization();
 
 // Map các đường dẫn API tới các Controller
 app.MapControllers();
+
+app.MapHub<NotificationHub>("/hubs/notification");
 
 // ================= BẮT ĐẦU ĐOẠN SEED DATA =================
 // Tạo một scope tạm thời để lấy các Service (DbContext, UserManager) ra dùng

@@ -135,6 +135,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(n => n.IssuerId)
             .OnDelete(DeleteBehavior.Restrict); // Chống lỗi Cascade: Không cho xóa User nếu họ đang là Issuer của 1 thông báo
 
+
+        builder.Entity<PostReport>().HasQueryFilter(pr => !pr.Post!.IsDeleted);
         // 3. Cấu hình PostReport
         builder.Entity<PostReport>()
             .HasOne(pr => pr.Reporter)
@@ -147,5 +149,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany() // Post không cần lưu list Report
             .HasForeignKey(pr => pr.PostId)
             .OnDelete(DeleteBehavior.Cascade); // Xóa bài viết -> Xóa luôn report của bài đó
+
+        builder.Entity<Post>()
+        .HasMany(p => p.Hashtags)
+        .WithMany(h => h.Posts)
+        .UsingEntity(j => j.ToTable("HashtagPost")); // Cấu hình tên bảng trung gian cho mối quan hệ Many-to-Many giữa Post và Hashtag
+
     }
 }

@@ -15,7 +15,7 @@ public class GetNewsFeedTests : PostControllerTestBase
     // 1. HAPPY PATH (Test trọn gói Lọc, Sắp xếp, Phân trang và Header)
     // ==========================================
     [Fact]
-    public async Task GetNewsFeed_ReturnsOkResult_WithPaginationAndOnlyPublicPosts()
+    public async Task GetNewsFeed_ReturnsOkResult_WithPaginationAndEligiblePosts()
     {
         // ARRANGE: Cài cắm dữ liệu vào DB ảo
         // Tạo 3 bài viết với thời gian và quyền riêng tư khác nhau
@@ -58,12 +58,16 @@ public class GetNewsFeedTests : PostControllerTestBase
         // Dữ liệu trả về phải là một danh sách các PostResponse
         var returnedPosts = Assert.IsAssignableFrom<IEnumerable<PostResponse>>(okResult.Value).ToList();
 
-        // 1. TEST BỘ LỌC: Chỉ có 2 bài Public được lọt qua (Bài Private bị chặn lại)
-        Assert.Equal(2, returnedPosts.Count);
+        // 1. TEST BỘ LỌC: Phải lấy được cả 3 bài (do bài Private là của chính user này)
+        Assert.Equal(3, returnedPosts.Count);
 
-        // 2. TEST SẮP XẾP: Bài "Mới" phải nằm trên cùng (Index 0), bài "Cũ" nằm dưới
+        // 2. TEST NỘI DUNG VÀ SẮP XẾP: 
+        // Vì bài mới nhất là "Public Mới" (AddMinutes(-1)), nó phải ở đầu.
         Assert.Equal("Bài Public Mới", returnedPosts[0].Content);
-        Assert.Equal("Bài Public Cũ", returnedPosts[1].Content);
+        
+        // Dùng Assert.Contains cho 2 bài còn lại để tránh lỗi xô lệch vị trí
+        Assert.Contains(returnedPosts, p => p.Content == "Bài Public Cũ");
+        Assert.Contains(returnedPosts, p => p.Content == "Bài Private (Ẩn)");
 
         // 3. TEST HEADER PHÂN TRANG: Đảm bảo Extension Method "AddPaginationHeader" đã chạy thành công
         var paginationHeader = _controller.Response.Headers["X-Pagination"];

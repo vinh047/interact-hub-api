@@ -23,9 +23,9 @@ public static class PostExtensions
             
             MediaFiles = p.MediaFiles.Select(m => new PostMediaResponse
             {
-                Id = m.Id,
+                PostId = m.Id,
                 MediaUrl = m.MediaUrl,
-                MediaType = m.MediaType.ToString()
+                MediaType = m.MediaType
             }).ToList()
         });
     }

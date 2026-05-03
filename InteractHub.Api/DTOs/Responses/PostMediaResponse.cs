@@ -1,8 +1,9 @@
-namespace InteractHub.Api.DTOs.Responses;
+using InteractHub.Api.Enums;
 
 public class PostMediaResponse
 {
-    public Guid Id { get; set; }
-    public required string MediaUrl { get; set; }
-    public string MediaType { get; set; } = string.Empty; // Trả về "Image" hoặc "Video"
+    public Guid PostId { get; set; }
+    public string? MediaUrl { get; set; }
+    public MediaType MediaType { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

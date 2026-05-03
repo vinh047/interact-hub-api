@@ -1,13 +1,14 @@
 using InteractHub.Api.DTOs.Requests.Post;
 using InteractHub.Api.Entities;
 using InteractHub.Api.Enums;
+using Xunit;
 
 namespace InteractHub.Tests.Services.PostServiceTests;
 
 public class GetNewsFeedAsyncTests : PostServiceTestBase
 {
     [Fact]
-    public async Task GetNewsFeedAsync_ReturnsOnlyPublicPosts()
+    public async Task GetNewsFeedAsync_ReturnsAllEligiblePostsForUser()
     {
         // Arrange
         _context.Posts.AddRange(
@@ -21,7 +22,10 @@ public class GetNewsFeedAsyncTests : PostServiceTestBase
         var result = await _postService.GetNewsFeedAsync(queryParams, _testUserId);
 
         // Assert
-        Assert.Single(result); // Chỉ mong đợi 1 bài public lọt qua
-        Assert.Equal("Public 1", result[0].Content);
+        Assert.Equal(2, result.Count); // Mong đợi lấy được cả bài Public và Private của chính mình
+        
+        // Kiểm tra xem trong list trả về có chứa 2 bài này không (không quan tâm thứ tự)
+        Assert.Contains(result, p => p.Content == "Public 1");
+        Assert.Contains(result, p => p.Content == "Private 1");
     }
 }

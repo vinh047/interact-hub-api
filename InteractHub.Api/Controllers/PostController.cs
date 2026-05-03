@@ -1,4 +1,5 @@
 using InteractHub.Api.DTOs.Requests.Post;
+using InteractHub.Api.DTOs.Requests.PostMedia;
 using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Enums;
 using InteractHub.Api.Extensions;
@@ -31,7 +32,7 @@ public class PostController(IPostService postService) : BaseController
     public async Task<IActionResult> DeletePost(Guid id)
     {
         var success = await postService.DeletePostAsync(id, CurrentUserId);
-        
+
         if (!success) return NotFound(new ErrorResponse(ErrorCode.POST_NOT_FOUND, "Post not found."));
         return Ok(new { message = "Post deleted successfully." });
     }
@@ -62,11 +63,35 @@ public class PostController(IPostService postService) : BaseController
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
+    public async Task<IActionResult> UpdatePost(Guid id, [FromForm] UpdatePostRequest request)
     {
-        // CỰC KỲ MỎNG NHẸ!
         var result = await postService.UpdatePostAsync(id, request, CurrentUserId);
         if (result == null) return NotFound(new ErrorResponse(ErrorCode.POST_NOT_FOUND, "Post not found."));
         return Ok(result);
+    }
+
+    [HttpGet("media/{userId}")]
+    public async Task<IActionResult> GetUserMedia(Guid userId, [FromQuery] PostMediaQueryParameters paginationParams)
+    {
+        var media = await postService.GetUserMediaAsync(userId, CurrentUserId, paginationParams);
+
+        Response.AddPaginationHeader(media.CurrentPage, media.Limit, media.TotalCount, media.TotalPages);
+
+        return Ok(media);
+    }
+
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchPosts([FromQuery] string q, [FromQuery] int page = 1, [FromQuery] int limit = 10)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            return Ok(new PagedList<PostResponse>(new List<PostResponse>(), 0, page, limit));
+        }
+
+        var posts = await postService.SearchPostsAsync(q, page, limit, CurrentUserId);
+
+        Response.AddPaginationHeader(posts.CurrentPage, posts.Limit, posts.TotalCount, posts.TotalPages);
+
+        return Ok(posts);
     }
 }

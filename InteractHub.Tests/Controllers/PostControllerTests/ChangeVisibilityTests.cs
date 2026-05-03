@@ -1,3 +1,4 @@
+using InteractHub.Api.DTOs.Requests.Post;
 using InteractHub.Api.DTOs.Responses;
 using InteractHub.Api.Entities;
 using InteractHub.Api.Enums;
@@ -26,7 +27,7 @@ public class ChangeVisibilityTests : PostControllerTestBase
         await _context.SaveChangesAsync();
 
         // ACT: Đổi thành Public
-        var result = await _controller.ChangeVisibility(postId, PostVisibility.Public);
+        var result = await _controller.ChangeVisibility(postId, new ChangeVisibilityRequest() { Visibility = PostVisibility.Public });
 
         // ASSERT
         var okResult = Assert.IsType<OkObjectResult>(result);
@@ -54,7 +55,7 @@ public class ChangeVisibilityTests : PostControllerTestBase
 
         // ACT & ASSERT: Đổi thành kiểm tra Exception
         var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _controller.ChangeVisibility(postId, PostVisibility.Private)
+            () => _controller.ChangeVisibility(postId, new ChangeVisibilityRequest() { Visibility = PostVisibility.Private })
         );
         Assert.Equal("You do not have permission to modify this post.", exception.Message);
     }

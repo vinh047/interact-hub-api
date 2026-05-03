@@ -6,10 +6,15 @@ using InteractHub.Api.Helpers;
 using InteractHub.Api.DTOs.Responses.Friendship;
 using Microsoft.EntityFrameworkCore;
 using InteractHub.Api.DTOs.Requests.Friendship;
+using Microsoft.AspNetCore.SignalR;
+using InteractHub.Api.Hubs;
+using InteractHub.Api.Events;
+using MediatR;
+
 
 namespace InteractHub.Api.Services;
 
-public class FriendshipService(ApplicationDbContext context) : IFriendshipService
+public class FriendshipService(ApplicationDbContext context, IPublisher publisher) : IFriendshipService
 {
     public async Task SendFriendRequestAsync(Guid targetUserId, Guid currentUserId)
     {
@@ -52,6 +57,7 @@ public class FriendshipService(ApplicationDbContext context) : IFriendshipServic
 
         context.Friendships.Add(newFriendship);
         await context.SaveChangesAsync();
+        await publisher.Publish(new FriendRequestSentEvent(currentUserId, targetUserId));
     }
 
     public async Task AcceptFriendRequestAsync(Guid requesterId, Guid currentUserId)
@@ -85,15 +91,27 @@ public class FriendshipService(ApplicationDbContext context) : IFriendshipServic
         return true;
     }
 
-    public async Task<PagedList<FriendUserResponse>> GetFriendsAsync(FriendshipParams friendshipParams, Guid currentUserId)
+    public async Task<PagedList<FriendUserResponse>> GetFriendsAsync(FriendshipParams friendshipParams, Guid userId)
     {
         var query = context.Friendships
             .Where(f => f.Status == FriendshipStatus.Accepted &&
-                       (f.RequesterId == currentUserId || f.AddresseeId == currentUserId))
-            .MapToFriendUserResponse(currentUserId) // Dùng Extension siêu gọn
-            .OrderByDescending(f => f.CreatedAt);
+                       (f.RequesterId == userId || f.AddresseeId == userId))
+            .AsQueryable();
 
-        return await PagedList<FriendUserResponse>.CreateAsync(query, friendshipParams.Page, friendshipParams.Limit);
+        // 1. Lọc theo tên nếu người dùng nhập ô search
+        if (!string.IsNullOrWhiteSpace(friendshipParams.Search))
+        {
+            var search = friendshipParams.Search.ToLower();
+            query = query.Where(f =>
+                (f.RequesterId == userId && f.Addressee!.FullName.ToLower().Contains(search)) ||
+                (f.AddresseeId == userId && f.Requester!.FullName.ToLower().Contains(search))
+            );
+        }
+
+        var result = query.MapToFriendUserResponse(userId)
+                          .OrderByDescending(f => f.CreatedAt);
+
+        return await PagedList<FriendUserResponse>.CreateAsync(result, friendshipParams.Page, friendshipParams.Limit);
     }
 
     public async Task<PagedList<FriendUserResponse>> GetPendingRequestsAsync(FriendshipParams friendshipParams, Guid currentUserId)

@@ -80,7 +80,7 @@ public class CreatePostTests : PostControllerTestBase // <-- Kế thừa ở đ�
         // Chọc vào DB ảo lấy bài viết ra xem
         var savedPost = await _context.Posts
             .Include(p => p.MediaFiles) // Nhớ Include để lấy danh sách ảnh
-            .FirstOrDefaultAsync(p => p.Content.Contains("có kèm ảnh"));
+            .FirstOrDefaultAsync(p => p.Content!.Contains("có kèm ảnh"));
 
         Assert.NotNull(savedPost);
 
