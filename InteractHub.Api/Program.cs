@@ -35,9 +35,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-//Cấu hình JWT Authentication
+// Cấu hình JWT Authentication an toàn
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
+// Lấy SecretKey, nếu bị null (do thiếu file json/biến môi trường) thì dùng chuỗi mặc định
+var secretKeyValue = jwtSettings["SecretKey"] ?? "976bfce0-8b3f-450e-bf5a-e2aedf6941d6!"; 
+var secretKey = Encoding.UTF8.GetBytes(secretKeyValue);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -165,11 +167,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // Cổng của Vite/React
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials() // Cho phép gửi Cookie/Token nếu cần
-              .WithExposedHeaders("X-Pagination");
+        policy.WithOrigins(
+                "http://localhost:3000",                     // Dành cho FE chạy local React/Next
+                "http://localhost:5173",                     // Dành cho FE chạy local Vite
+                "https://interact-hub-client-hazel.vercel.app" // Tên miền Vercel
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials() 
+            .WithExposedHeaders("X-Pagination");
     });
 });
 
