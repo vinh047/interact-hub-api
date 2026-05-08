@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  interacthub-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: interacthub-backend
+    ports:
+      - "5201:8080" # Map port 8080 trong container ra port 5201 trên máy host
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=tcp:interacthub-server-vinh047.database.windows.net,1433;Initial Catalog=InteractHubDB;Persist Security Info=False;User ID=vinh047;Password=ztegc165767e@;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
