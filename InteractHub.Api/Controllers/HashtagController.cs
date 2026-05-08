@@ -13,7 +13,7 @@ public class HashtagController(ApplicationDbContext context) : ControllerBase
     {
         var trending = await context.Hashtags
             .OrderByDescending(h => h.TrendingScore)
-            .Take(10)
+            .Take(5)
             .Select(h => new { h.Id, h.Name, h.TrendingScore }) // Trả về object ẩn danh cho nhanh
             .ToListAsync();
 

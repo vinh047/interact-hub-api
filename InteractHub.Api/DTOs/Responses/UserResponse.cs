@@ -9,4 +9,5 @@ public class UserResponse
     public int FriendCount { get; set; }
     public FriendshipStatus? FriendshipStatus { get; set; }
     public bool? IsRequester { get; set; }
+    public int MutualFriendsCount { get; set; }
 }

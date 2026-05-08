@@ -113,4 +113,16 @@ public class UserController(ApplicationDbContext context, IFileService fileServi
 
         return Ok(users);
     }
+
+    [HttpGet("suggestions")]
+    public async Task<IActionResult> GetFriendSuggestions([FromQuery] int page = 1, [FromQuery] int limit = 5)
+    {
+        // Để limit mặc định = 5 cho UI cột phải nó gọn
+        var suggestions = await userService.GetFriendSuggestionsAsync(page, limit, CurrentUserId);
+
+        // Đính kèm Header phân trang cho Frontend (Giống hệt hàm Search)
+        Response.AddPaginationHeader(suggestions.CurrentPage, suggestions.Limit, suggestions.TotalCount, suggestions.TotalPages);
+
+        return Ok(suggestions);
+    }
 }
