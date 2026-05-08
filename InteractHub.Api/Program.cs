@@ -181,6 +181,20 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
+    {
+        context.Database.Migrate(); 
+        Console.WriteLine("Đã tạo bảng trên Database thành công!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Lỗi tạo bảng Database: {ex.Message}");
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

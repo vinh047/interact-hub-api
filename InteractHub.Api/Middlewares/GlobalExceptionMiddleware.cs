@@ -24,7 +24,7 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
-            // Nếu có MỘT LỖI BẤT KỲ ném ra từ bên trong, tấm lưới này sẽ tóm lại!
+            // Ghi log ra console của Render
             _logger.LogError(ex, "Đã xảy ra lỗi hệ thống: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex);
         }
@@ -34,47 +34,45 @@ public class GlobalExceptionMiddleware
     {
         context.Response.ContentType = "application/json";
 
-        // Mặc định mọi lỗi không lường trước được tính là lỗi 500 (Sập server)
         var statusCode = (int)HttpStatusCode.InternalServerError;
-        var message = "Đã xảy ra lỗi hệ thống cục bộ.";
         var errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
 
+        // BUNG CHI TIẾT LỖI ĐỂ DEBUG (Bao gồm cả InnerException cực kỳ quan trọng đối với lỗi DB)
+        var message = exception.InnerException != null
+            ? $"Lỗi chính: {exception.Message} | Chi tiết sâu: {exception.InnerException.Message}"
+            : exception.Message;
 
         // PHIÊN DỊCH LỖI: Chuyển các Exception C# thành HTTP Status Code
         switch (exception)
         {
-            case UnauthorizedAccessException: 
-                // Lỗi 403 do bạn ném ra ở BaseController hoặc Service
+            case UnauthorizedAccessException:
                 statusCode = (int)HttpStatusCode.Forbidden;
                 message = exception.Message;
                 break;
-            case KeyNotFoundException: 
-                // Nếu sau này bạn có logic ném lỗi không tìm thấy (404)
+            case KeyNotFoundException:
                 statusCode = (int)HttpStatusCode.NotFound;
                 message = exception.Message;
                 break;
-            // Bạn có thể thêm các case khác như ArgumentException -> 400 BadRequest
             case ArgumentException:
                 statusCode = (int)HttpStatusCode.BadRequest;
                 message = exception.Message;
                 break;
             case InvalidOperationException:
-                statusCode = (int)HttpStatusCode.Conflict; // Chuyển thành lỗi 409
-                message = exception.Message; // Lấy đúng câu "You are already friends..."
-                
-                // Nếu Middleware của bạn có cấu hình trả về ErrorCode thì gán thêm dòng dưới:
-                errorCode = ErrorCode.CONFLICT; 
+                statusCode = (int)HttpStatusCode.Conflict;
+                message = exception.Message;
+                errorCode = ErrorCode.CONFLICT;
                 break;
         }
 
         context.Response.StatusCode = statusCode;
 
-        // Đóng gói lại thành JSON (Ở đây tôi dùng cấu trúc cơ bản, bạn có thể thay bằng ErrorResponse của bạn)
-        var response = new 
-        { 
+        // Có thể in thêm StackTrace nếu bạn muốn xem lỗi nằm ở file nào, dòng số mấy
+        var response = new
+        {
             code = statusCode,
             message = message,
-            errorCode = errorCode // Nếu bạn có thêm trường này trong ErrorResponse thì gán vào đây
+            errorCode = errorCode,
+            // stackTrace = exception.StackTrace // Bỏ comment dòng này nếu muốn xem chi tiết đến từng dòng code
         };
 
         var json = JsonSerializer.Serialize(response);
